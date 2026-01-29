@@ -1,0 +1,739 @@
+openapi: 3.0.3
+info:
+  title: GPlace Autocomplete API
+  description: |
+    Backend API for Google Places Autocomplete application.
+
+    ## Features
+    - Client identification and management
+    - Location tracking (visited and favorite locations)
+    - Category management for favorite locations
+    - Weather data integration (Open-Meteo 3rd party API)
+
+    ## Authentication
+    This API uses client-based identification. Each client is identified by a UUID.
+    Create a client first using the `/api/client/identify` endpoint.
+  version: 1.0.0
+  contact:
+    name: API Support
+
+servers:
+  - url: http://localhost:8080
+    description: Local development server
+
+tags:
+  - name: Client
+    description: Client identification and management
+  - name: Categories
+    description: Category management for favorite locations
+  - name: Locations
+    description: Location management (visited and favorites)
+  - name: Weather
+    description: Weather data from 3rd party API
+
+paths:
+  /api/client/identify:
+    post:
+      tags:
+        - Client
+      summary: Identify or create a client
+      description: |
+        Creates a new client if no clientId is provided, or validates an existing clientId.
+        Returns the clientId which should be used for all subsequent requests.
+      operationId: identifyClient
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ClientIdentifyRequest'
+            examples:
+              newClient:
+                summary: Create new client
+                value: {}
+              existingClient:
+                summary: Validate existing client
+                value:
+                  clientId: "019432a1-b2c3-7def-8901-234567890abc"
+      responses:
+        '200':
+          description: Client identified successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ClientIdentifyResponse'
+
+  /api/categories:
+    post:
+      tags:
+        - Categories
+      summary: Create a new category
+      description: Creates a new category for organizing favorite locations
+      operationId: createCategory
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+      responses:
+        '200':
+          description: Category created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Invalid request or client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Categories
+      summary: Get categories (paginated)
+      description: Returns a paginated list of categories for a client
+      operationId: getCategories
+      parameters:
+        - $ref: '#/components/parameters/clientIdQuery'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+      responses:
+        '200':
+          description: Categories retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageCategoryResponse'
+
+  /api/categories/{id}:
+    get:
+      tags:
+        - Categories
+      summary: Get category by ID
+      description: Returns a single category by its ID
+      operationId: getCategoryById
+      parameters:
+        - $ref: '#/components/parameters/categoryIdPath'
+        - $ref: '#/components/parameters/clientIdQuery'
+      responses:
+        '200':
+          description: Category retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Category not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    put:
+      tags:
+        - Categories
+      summary: Update category name
+      description: Updates the name of an existing category
+      operationId: updateCategory
+      parameters:
+        - $ref: '#/components/parameters/categoryIdPath'
+        - $ref: '#/components/parameters/clientIdQuery'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryUpdateRequest'
+      responses:
+        '200':
+          description: Category updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CategoryResponse'
+        '400':
+          description: Category not found or invalid request
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/locations/visited:
+    post:
+      tags:
+        - Locations
+      summary: Save visited location
+      description: Records a location that the user has visited (clicked on from search)
+      operationId: saveVisitedLocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationRequest'
+            example:
+              clientId: "019432a1-b2c3-7def-8901-234567890abc"
+              placeDesc: "Tokyo, Japan"
+              latitude: "35.6762"
+              longitude: "139.6503"
+      responses:
+        '200':
+          description: Visited location saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '400':
+          description: Invalid request or client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Locations
+      summary: Get visited locations (paginated)
+      description: Returns a paginated list of visited locations for a client (10 per page by default)
+      operationId: getVisitedLocations
+      parameters:
+        - $ref: '#/components/parameters/clientIdQuery'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+      responses:
+        '200':
+          description: Visited locations retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageLocationResponse'
+
+  /api/locations/faved:
+    post:
+      tags:
+        - Locations
+      summary: Save favorite location
+      description: |
+        Saves a location to favorites. Optionally assign a category.
+        If categoryId is provided but not found, the location is still saved without a category
+        and a warning message is returned in the response.
+      operationId: saveFavedLocation
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LocationRequest'
+            examples:
+              withoutCategory:
+                summary: Save without category
+                value:
+                  clientId: "019432a1-b2c3-7def-8901-234567890abc"
+                  placeDesc: "Paris, France"
+                  latitude: "48.8566"
+                  longitude: "2.3522"
+              withCategory:
+                summary: Save with category
+                value:
+                  clientId: "019432a1-b2c3-7def-8901-234567890abc"
+                  placeDesc: "Jiro Sushi, Tokyo"
+                  latitude: "35.6712"
+                  longitude: "139.7633"
+                  categoryId: "019432a1-b2c3-7def-8901-234567890def"
+      responses:
+        '200':
+          description: Favorite location saved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '400':
+          description: Invalid request or client not found
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+    get:
+      tags:
+        - Locations
+      summary: Get favorite locations (paginated)
+      description: Returns a paginated list of all favorite locations for a client (10 per page by default)
+      operationId: getFavedLocations
+      parameters:
+        - $ref: '#/components/parameters/clientIdQuery'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+      responses:
+        '200':
+          description: Favorite locations retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageLocationResponse'
+
+  /api/locations/faved/{id}/category:
+    put:
+      tags:
+        - Locations
+      summary: Assign or remove category from favorite location
+      description: |
+        Assigns a category to an existing favorite location, or removes the category assignment.
+        Set categoryId to null to remove the category.
+        If categoryId is provided but not found, the category is not updated and a warning message is returned.
+      operationId: assignCategoryToFavedLocation
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: The ID of the favorite location
+          schema:
+            type: string
+            format: uuid
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignCategoryRequest'
+            examples:
+              assignCategory:
+                summary: Assign category
+                value:
+                  clientId: "019432a1-b2c3-7def-8901-234567890abc"
+                  categoryId: "019432a1-b2c3-7def-8901-234567890def"
+              removeCategory:
+                summary: Remove category
+                value:
+                  clientId: "019432a1-b2c3-7def-8901-234567890abc"
+                  categoryId: null
+      responses:
+        '200':
+          description: Category assignment updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LocationResponse'
+        '400':
+          description: Location not found or does not belong to client
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+
+  /api/locations/faved/category/{categoryId}:
+    get:
+      tags:
+        - Locations
+      summary: Get favorite locations by category (paginated)
+      description: Returns a paginated list of favorite locations within a specific category
+      operationId: getFavedLocationsByCategory
+      parameters:
+        - $ref: '#/components/parameters/categoryIdPath'
+        - $ref: '#/components/parameters/clientIdQuery'
+        - $ref: '#/components/parameters/page'
+        - $ref: '#/components/parameters/size'
+      responses:
+        '200':
+          description: Favorite locations retrieved successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PageLocationResponse'
+
+  /api/locations/weather:
+    get:
+      tags:
+        - Weather
+      summary: Get weather for coordinates
+      description: |
+        Fetches current weather data for the given coordinates from Open-Meteo API (3rd party).
+        If the weather API fails, the response will still return with weather set to null.
+      operationId: getLocationWeather
+      parameters:
+        - name: latitude
+          in: query
+          required: true
+          description: Geographic latitude
+          schema:
+            type: string
+          example: "35.6762"
+        - name: longitude
+          in: query
+          required: true
+          description: Geographic longitude
+          schema:
+            type: string
+          example: "139.6503"
+      responses:
+        '200':
+          description: Weather data retrieved (weather may be null if API fails)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WeatherResponse'
+
+components:
+  parameters:
+    clientIdQuery:
+      name: clientId
+      in: query
+      required: true
+      description: The client UUID
+      schema:
+        type: string
+        format: uuid
+
+    categoryIdPath:
+      name: categoryId
+      in: path
+      required: true
+      description: The category UUID
+      schema:
+        type: string
+        format: uuid
+
+    page:
+      name: page
+      in: query
+      required: false
+      description: Page number (0-indexed)
+      schema:
+        type: integer
+        default: 0
+        minimum: 0
+
+    size:
+      name: size
+      in: query
+      required: false
+      description: Number of items per page
+      schema:
+        type: integer
+        default: 10
+        minimum: 1
+        maximum: 100
+
+  schemas:
+    ClientIdentifyRequest:
+      type: object
+      properties:
+        clientId:
+          type: string
+          format: uuid
+          description: Existing client ID to validate (optional)
+          nullable: true
+
+    ClientIdentifyResponse:
+      type: object
+      required:
+        - clientId
+      properties:
+        clientId:
+          type: string
+          format: uuid
+          description: The client UUID (newly created or validated existing)
+
+    CategoryRequest:
+      type: object
+      required:
+        - clientId
+        - categoryName
+      properties:
+        clientId:
+          type: string
+          format: uuid
+          description: The client UUID
+        categoryName:
+          type: string
+          maxLength: 100
+          description: Name of the category
+          example: "Food"
+
+    CategoryUpdateRequest:
+      type: object
+      required:
+        - categoryName
+      properties:
+        categoryName:
+          type: string
+          maxLength: 100
+          description: New name for the category
+          example: "Food & Beverages"
+
+    CategoryResponse:
+      type: object
+      required:
+        - id
+        - categoryName
+        - createdAt
+        - updatedAt
+        - clientId
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Category UUID
+        categoryName:
+          type: string
+          description: Name of the category
+        createdAt:
+          type: string
+          format: date-time
+          description: When the category was created
+        updatedAt:
+          type: string
+          format: date-time
+          description: When the category was last updated
+        clientId:
+          type: string
+          format: uuid
+          description: Owner client UUID
+
+    LocationRequest:
+      type: object
+      required:
+        - clientId
+        - placeDesc
+        - latitude
+        - longitude
+      properties:
+        clientId:
+          type: string
+          format: uuid
+          description: The client UUID
+        placeDesc:
+          type: string
+          description: Description/name of the place
+          example: "Tokyo, Japan"
+        latitude:
+          type: string
+          description: Geographic latitude
+          example: "35.6762"
+        longitude:
+          type: string
+          description: Geographic longitude
+          example: "139.6503"
+        categoryId:
+          type: string
+          format: uuid
+          description: Optional category ID (for faved locations only)
+          nullable: true
+
+    AssignCategoryRequest:
+      type: object
+      required:
+        - clientId
+      properties:
+        clientId:
+          type: string
+          format: uuid
+          description: The client UUID
+        categoryId:
+          type: string
+          format: uuid
+          description: Category ID to assign (null to remove)
+          nullable: true
+
+    LocationResponse:
+      type: object
+      required:
+        - id
+        - placeDesc
+        - latitude
+        - longitude
+        - createdAt
+        - clientId
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Location UUID
+        placeDesc:
+          type: string
+          description: Description/name of the place
+        latitude:
+          type: string
+          description: Geographic latitude
+        longitude:
+          type: string
+          description: Geographic longitude
+        createdAt:
+          type: string
+          format: date-time
+          description: When the location was saved
+        clientId:
+          type: string
+          format: uuid
+          description: Owner client UUID
+        categoryId:
+          type: string
+          format: uuid
+          description: Assigned category UUID (faved locations only)
+          nullable: true
+        categoryName:
+          type: string
+          description: Assigned category name (faved locations only)
+          nullable: true
+        message:
+          type: string
+          description: Warning or info message (e.g., if category was not found)
+          nullable: true
+
+    WeatherResponse:
+      type: object
+      required:
+        - latitude
+        - longitude
+      properties:
+        latitude:
+          type: string
+          description: Request latitude
+        longitude:
+          type: string
+          description: Request longitude
+        weather:
+          $ref: '#/components/schemas/WeatherData'
+
+    WeatherData:
+      type: object
+      nullable: true
+      description: Weather data (null if 3rd party API fails)
+      properties:
+        description:
+          type: string
+          description: Human-readable weather description
+          example: "Partly cloudy"
+        temperature:
+          type: number
+          format: double
+          description: Temperature in Celsius
+          example: 22.5
+        feelsLike:
+          type: number
+          format: double
+          description: Apparent temperature in Celsius
+          example: 21.0
+        windSpeed:
+          type: number
+          format: double
+          description: Wind speed
+          example: 12.5
+        humidity:
+          type: number
+          format: double
+          description: Relative humidity percentage
+          example: 65.0
+        condition:
+          type: string
+          description: Weather condition
+          example: "Cloudy"
+
+    PageCategoryResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/CategoryResponse'
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        totalElements:
+          type: integer
+          format: int64
+          description: Total number of elements
+        totalPages:
+          type: integer
+          description: Total number of pages
+        size:
+          type: integer
+          description: Page size
+        number:
+          type: integer
+          description: Current page number (0-indexed)
+        first:
+          type: boolean
+          description: Whether this is the first page
+        last:
+          type: boolean
+          description: Whether this is the last page
+        empty:
+          type: boolean
+          description: Whether the page is empty
+
+    PageLocationResponse:
+      type: object
+      properties:
+        content:
+          type: array
+          items:
+            $ref: '#/components/schemas/LocationResponse'
+        pageable:
+          $ref: '#/components/schemas/Pageable'
+        totalElements:
+          type: integer
+          format: int64
+          description: Total number of elements
+        totalPages:
+          type: integer
+          description: Total number of pages
+        size:
+          type: integer
+          description: Page size
+        number:
+          type: integer
+          description: Current page number (0-indexed)
+        first:
+          type: boolean
+          description: Whether this is the first page
+        last:
+          type: boolean
+          description: Whether this is the last page
+        empty:
+          type: boolean
+          description: Whether the page is empty
+
+    Pageable:
+      type: object
+      properties:
+        pageNumber:
+          type: integer
+        pageSize:
+          type: integer
+        sort:
+          $ref: '#/components/schemas/Sort'
+        offset:
+          type: integer
+          format: int64
+        paged:
+          type: boolean
+        unpaged:
+          type: boolean
+
+    Sort:
+      type: object
+      properties:
+        sorted:
+          type: boolean
+        unsorted:
+          type: boolean
+        empty:
+          type: boolean
+
+    ErrorResponse:
+      type: object
+      properties:
+        timestamp:
+          type: string
+          format: date-time
+        status:
+          type: integer
+        error:
+          type: string
+        message:
+          type: string
+        path:
+          type: string

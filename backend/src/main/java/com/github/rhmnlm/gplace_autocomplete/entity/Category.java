@@ -13,30 +13,24 @@ import jakarta.persistence.Table;
 import lombok.Data;
 
 @Entity
-@Table(name = "faved_location")
+@Table(name = "category")
 @Data
-public class FavedLocation {
+public class Category {
+
     @Id
     @Column(name = "id")
     private UUID id;
 
-    @Column(name = "place_desc", nullable = false)
-    private String placeDesc;
-
-    @Column(name = "latitude", nullable = false)
-    private String latitude;
-
-    @Column(name = "longitude", nullable = false)
-    private String longitude;
+    @Column(name = "category_name", nullable = false, length = 100)
+    private String categoryName;
 
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "client_id_fk", nullable = false)
     private Client client;
-
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "category_id_fk", nullable = true)
-    private Category category;
 }

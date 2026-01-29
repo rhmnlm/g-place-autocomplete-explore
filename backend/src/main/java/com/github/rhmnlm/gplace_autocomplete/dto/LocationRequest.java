@@ -19,4 +19,6 @@ public class LocationRequest {
 
     @NotBlank(message = "longitude is required")
     private String longitude;
+
+    private UUID categoryId; // optional, for faved locations only
 }

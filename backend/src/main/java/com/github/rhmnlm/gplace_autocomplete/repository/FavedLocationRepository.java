@@ -12,4 +12,6 @@ import com.github.rhmnlm.gplace_autocomplete.entity.FavedLocation;
 @Repository
 public interface FavedLocationRepository extends JpaRepository<FavedLocation, UUID> {
     Page<FavedLocation> findByClient_ClientId(UUID clientId, Pageable pageable);
+
+    Page<FavedLocation> findByCategory_IdAndClient_ClientId(UUID categoryId, UUID clientId, Pageable pageable);
 }

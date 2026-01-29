@@ -11,7 +11,7 @@ public class WeatherData {
     private String description;
     private Double temperature;
     private Double feelsLike;
-    private Integer humidity;
     private Double windSpeed;
+    private Double humidity;
     private String condition;
 }

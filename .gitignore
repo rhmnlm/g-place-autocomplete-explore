@@ -6,6 +6,9 @@
 !**/src/test/**/build/
 **/node_modules
 
+# IntelliJ
+.idea
+
 # db file
 db/mssql-data/**
 

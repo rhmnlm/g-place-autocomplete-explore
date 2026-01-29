@@ -8,6 +8,10 @@ spring:
     password: ${DB_PASSWORD}
     driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
 
+weather:
+  api:
+    base-url: https://api.open-meteo.com/v1
+
 logging:
   level:
     root: WARN

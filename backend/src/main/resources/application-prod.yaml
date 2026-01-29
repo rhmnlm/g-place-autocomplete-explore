@@ -1,0 +1,19 @@
+port: 8080
+spring:
+  application:
+    name: gplace-autocomplete
+  datasource:
+    url: ${DB_URL}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+logging:
+  level:
+    root: WARN
+    org.springframework.web: ERROR
+  file:
+    name: log/com.github.rhmnlm.g-place-autocomplete.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd} [%thread] %-5level %logger{36} - %msg%n"

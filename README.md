@@ -1,0 +1,2 @@
+This repository contains my exploration and learning experiments with Google Places Autocomplete (legacy API). As Google has transitioned to the newer Places API, I'm using this project to understand how the legacy autocomplete functionality works, its capabilities, limitations, and implementation patterns before potentially migrating to the modern API.
+EOF

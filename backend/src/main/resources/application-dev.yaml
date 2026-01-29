@@ -1,0 +1,19 @@
+port: 8080
+spring:
+  application:
+    name: gplace-autocomplete
+  datasource:
+    url: jdbc:sqlserver://localhost:1433;databaseName=TESTDB;encrypt=true;trustServerCertificate=true
+    username: sa
+    password: YourStrong!Passw0rd
+    driver-class-name: com.microsoft.sqlserver.jdbc.SQLServerDriver
+
+logging:
+  level:
+    root: INFO
+    org.springframework.web: DEBUG
+  file:
+    name: log/com.github.rhmnlm.g-place-autocomplete.log
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd} [%thread] %-5level %logger{36} - %msg%n"

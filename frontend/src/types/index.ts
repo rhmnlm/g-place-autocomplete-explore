@@ -62,6 +62,24 @@ export interface ClientIdentifyResponse {
   clientId: string;
 }
 
+// Category API types
+export interface CategoryRequest {
+  clientId: string;
+  categoryName: string;
+}
+
+export interface CategoryUpdateRequest {
+  categoryName: string;
+}
+
+export interface CategoryResponse {
+  id: string;
+  categoryName: string;
+  createdAt: string;
+  updatedAt: string;
+  clientId: string;
+}
+
 // Google Places types
 export interface PlaceDetails {
   placeId: string;

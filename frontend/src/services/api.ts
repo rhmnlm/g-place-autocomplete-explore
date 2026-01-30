@@ -4,6 +4,9 @@ import type {
   PaginatedResponse,
   AssignCategoryRequest,
   ClientIdentifyResponse,
+  CategoryRequest,
+  CategoryUpdateRequest,
+  CategoryResponse,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
@@ -66,4 +69,21 @@ export const locationsApi = {
 
   assignCategory: (id: string, data: AssignCategoryRequest): Promise<LocationResponse> =>
     put(`/locations/faved/${id}/category`, data),
+
+  getFavedByCategory: (clientId: string, categoryId: string, page: number, size: number): Promise<PaginatedResponse<LocationResponse>> =>
+    get(`/locations/faved/category/${categoryId}?clientId=${clientId}&page=${page}&size=${size}`),
+};
+
+export const categoriesApi = {
+  create: (data: CategoryRequest): Promise<CategoryResponse> =>
+    post('/categories', data),
+
+  update: (id: string, clientId: string, data: CategoryUpdateRequest): Promise<CategoryResponse> =>
+    put(`/categories/${id}?clientId=${clientId}`, data),
+
+  getAll: (clientId: string, page: number, size: number): Promise<PaginatedResponse<CategoryResponse>> =>
+    get(`/categories?clientId=${clientId}&page=${page}&size=${size}`),
+
+  getById: (id: string, clientId: string): Promise<CategoryResponse> =>
+    get(`/categories/${id}?clientId=${clientId}`),
 };

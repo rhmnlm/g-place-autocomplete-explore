@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   Box,
   Typography,
@@ -8,17 +8,25 @@ import {
   Tab,
   IconButton,
   CircularProgress,
+  Menu,
+  MenuItem,
+  Button,
+  Chip,
 } from '@mui/material';
 import {
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   History as HistoryIcon,
   LocationOn as LocationIcon,
+  Category as CategoryIcon,
+  Settings as SettingsIcon,
 } from '@mui/icons-material';
 import { useAppSelector, useAppDispatch } from '../../store/hooks';
-import { addFavorite, removeFavoriteLocal } from '../../store/slices/favoritesSlice';
-import { selectPlace } from '../../store/slices/searchSlice';
-import type { LocationResponse, PlaceDetails } from '../../types';
+import { addFavorite, removeFavoriteLocal, assignCategory } from '../../store/slices/favoritesSlice';
+import { selectPlace, saveVisitedLocation } from '../../store/slices/searchSlice';
+import { fetchCategories } from '../../store/slices/categoriesSlice';
+import { CategoryDialog } from '../CategoryDialog';
+import type { LocationResponse, PlaceDetails, CategoryResponse } from '../../types';
 
 interface TabPanelProps {
   children?: React.ReactNode;
@@ -43,11 +51,34 @@ function TabPanel(props: TabPanelProps) {
 interface LocationItemProps {
   location: LocationResponse;
   isFavorite: boolean;
+  showCategorySelector?: boolean;
+  categories?: CategoryResponse[];
   onToggleFavorite: () => void;
+  onCategoryChange?: (categoryId: string | null) => void;
   onClick: () => void;
 }
 
-const LocationItem = ({ location, isFavorite, onToggleFavorite, onClick }: LocationItemProps) => {
+const LocationItem = ({
+  location,
+  isFavorite,
+  showCategorySelector = false,
+  categories = [],
+  onToggleFavorite,
+  onCategoryChange,
+  onClick,
+}: LocationItemProps) => {
+  const [anchorEl, setAnchorEl] = useState<null | HTMLElement>(null);
+
+  const handleCategoryClick = (e: React.MouseEvent<HTMLElement>) => {
+    e.stopPropagation();
+    setAnchorEl(e.currentTarget);
+  };
+
+  const handleCategorySelect = (categoryId: string | null) => {
+    onCategoryChange?.(categoryId);
+    setAnchorEl(null);
+  };
+
   return (
     <Box
       sx={{
@@ -95,12 +126,50 @@ const LocationItem = ({ location, isFavorite, onToggleFavorite, onClick }: Locat
         >
           {location.placeDesc}
         </Typography>
-        {location.categoryName && (
+        {showCategorySelector ? (
+          <Chip
+            size="small"
+            icon={<CategoryIcon sx={{ fontSize: 14 }} />}
+            label={location.categoryName || 'No category'}
+            onClick={handleCategoryClick}
+            sx={{
+              mt: 0.5,
+              height: 22,
+              fontSize: '0.7rem',
+              '& .MuiChip-icon': { ml: 0.5 },
+            }}
+          />
+        ) : location.categoryName ? (
           <Typography variant="caption" color="text.secondary">
             {location.categoryName}
           </Typography>
-        )}
+        ) : null}
       </Box>
+
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={() => setAnchorEl(null)}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <MenuItem
+          onClick={() => handleCategorySelect(null)}
+          selected={!location.categoryId}
+        >
+          <Typography variant="body2" color="text.secondary">
+            No category
+          </Typography>
+        </MenuItem>
+        {categories.map((category) => (
+          <MenuItem
+            key={category.id}
+            onClick={() => handleCategorySelect(category.id)}
+            selected={location.categoryId === category.id}
+          >
+            {category.categoryName}
+          </MenuItem>
+        ))}
+      </Menu>
     </Box>
   );
 };
@@ -108,18 +177,27 @@ const LocationItem = ({ location, isFavorite, onToggleFavorite, onClick }: Locat
 export const FavoritesSidebar = () => {
   const dispatch = useAppDispatch();
   const [tabValue, setTabValue] = useState(0);
+  const [categoryDialogOpen, setCategoryDialogOpen] = useState(false);
 
   const clientId = useAppSelector((state) => state.client.clientId);
   const favorites = useAppSelector((state) => state.favorites.items);
   const favoritesLoading = useAppSelector((state) => state.favorites.isLoading);
   const searchHistory = useAppSelector((state) => state.search.history);
   const historyLoading = useAppSelector((state) => state.search.isLoading);
+  const categories = useAppSelector((state) => state.categories.items);
+
+  // Load categories on mount
+  useEffect(() => {
+    if (clientId) {
+      dispatch(fetchCategories({ clientId }));
+    }
+  }, [clientId, dispatch]);
 
   const handleTabChange = (_event: React.SyntheticEvent, newValue: number) => {
     setTabValue(newValue);
   };
 
-  const handleLocationClick = (location: LocationResponse) => {
+  const handleLocationClick = (location: LocationResponse, isFromHistory = false) => {
     const placeDetails: PlaceDetails = {
       placeId: location.id,
       name: location.placeDesc,
@@ -128,6 +206,18 @@ export const FavoritesSidebar = () => {
       longitude: parseFloat(location.longitude),
     };
     dispatch(selectPlace(placeDetails));
+
+    // Save to history when clicking from favorites tab (not from history tab to avoid duplicates)
+    if (!isFromHistory && clientId) {
+      dispatch(
+        saveVisitedLocation({
+          clientId,
+          placeDesc: location.placeDesc,
+          latitude: location.latitude,
+          longitude: location.longitude,
+        })
+      );
+    }
   };
 
   const handleAddToFavorites = (location: LocationResponse) => {
@@ -144,6 +234,11 @@ export const FavoritesSidebar = () => {
 
   const handleRemoveFromFavorites = (locationId: string) => {
     dispatch(removeFavoriteLocal(locationId));
+  };
+
+  const handleCategoryChange = (locationId: string, categoryId: string | null) => {
+    if (!clientId) return;
+    dispatch(assignCategory({ id: locationId, categoryId, clientId }));
   };
 
   const isFavorite = (location: LocationResponse) => {
@@ -200,6 +295,18 @@ export const FavoritesSidebar = () => {
 
       {/* Favorites Tab */}
       <TabPanel value={tabValue} index={0}>
+        {/* Manage Categories Button */}
+        <Box sx={{ px: 1, py: 1, borderBottom: 1, borderColor: 'divider' }}>
+          <Button
+            size="small"
+            startIcon={<SettingsIcon />}
+            onClick={() => setCategoryDialogOpen(true)}
+            sx={{ textTransform: 'none' }}
+          >
+            Manage Categories
+          </Button>
+        </Box>
+
         <Box
           sx={{
             flex: 1,
@@ -239,8 +346,11 @@ export const FavoritesSidebar = () => {
                 <LocationItem
                   location={location}
                   isFavorite={true}
+                  showCategorySelector={true}
+                  categories={categories}
                   onToggleFavorite={() => handleRemoveFromFavorites(location.id)}
-                  onClick={() => handleLocationClick(location)}
+                  onCategoryChange={(categoryId) => handleCategoryChange(location.id, categoryId)}
+                  onClick={() => handleLocationClick(location, false)}
                 />
                 {index < favorites.length - 1 && <Divider sx={{ mx: 1 }} />}
               </Box>
@@ -301,7 +411,7 @@ export const FavoritesSidebar = () => {
                         )
                       : handleAddToFavorites(location)
                   }
-                  onClick={() => handleLocationClick(location)}
+                  onClick={() => handleLocationClick(location, true)}
                 />
                 {index < searchHistory.length - 1 && <Divider sx={{ mx: 1 }} />}
               </Box>
@@ -309,6 +419,12 @@ export const FavoritesSidebar = () => {
           )}
         </Box>
       </TabPanel>
+
+      {/* Category Management Dialog */}
+      <CategoryDialog
+        open={categoryDialogOpen}
+        onClose={() => setCategoryDialogOpen(false)}
+      />
     </Paper>
   );
 };

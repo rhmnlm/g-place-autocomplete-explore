@@ -3,7 +3,16 @@ import { APIProvider, Map, useApiIsLoaded, useMapsLibrary } from '@vis.gl/react-
 import { Box, Paper, CircularProgress, Typography } from '@mui/material';
 import type { PlaceDetails } from '../../types';
 import SearchBar from '../SearchBar/SearchBar';
-import { useAppSelector } from '../../store/hooks';
+import { LocationDetailCard } from '../LocationDetailCard';
+import { useAppSelector, useAppDispatch } from '../../store/hooks';
+import { addFavorite, removeFavoriteLocal } from '../../store/slices/favoritesSlice';
+import { clearSelectedPlace, saveVisitedLocation, selectPlace } from '../../store/slices/searchSlice';
+
+declare global {
+  interface Window {
+    google: typeof google;
+  }
+}
 
 const API_KEY = import.meta.env.VITE_GMAP_API_KEY || '';
 
@@ -20,11 +29,15 @@ interface MapContentProps {
 }
 
 const MapContent = ({ onPlaceSelect }: MapContentProps) => {
+  const dispatch = useAppDispatch();
   const favorites = useAppSelector((state) => state.favorites.items);
+  const favoritesLoading = useAppSelector((state) => state.favorites.isLoading);
   const selectedPlace = useAppSelector((state) => state.search.selectedPlace);
+  const clientId = useAppSelector((state) => state.client.clientId);
 
   const isLoaded = useApiIsLoaded();
   const markerLib = useMapsLibrary('marker');
+  const placesLib = useMapsLibrary('places');
 
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
@@ -33,6 +46,7 @@ const MapContent = ({ onPlaceSelect }: MapContentProps) => {
 
   // Update center when a place is selected from autocomplete
   useEffect(() => {
+    console.log("useEffect selectedPlace running");
     if (selectedPlace && mapRef.current) {
       const newCenter = {
         lat: selectedPlace.latitude,
@@ -43,6 +57,42 @@ const MapContent = ({ onPlaceSelect }: MapContentProps) => {
       mapRef.current.setZoom(15);
     }
   }, [selectedPlace]);
+
+  // Handler for marker click - shows details and saves to history
+  const handleMarkerClick = useCallback(
+    (location: { placeDesc: string; latitude: string; longitude: string }) => {
+      const lat = parseFloat(location.latitude);
+      const lng = parseFloat(location.longitude);
+
+      // Center map on location
+      setCenter({ lat, lng });
+      mapRef.current?.setCenter({ lat, lng });
+      mapRef.current?.setZoom(15);
+
+      // Set selected place to show detail card
+      const placeDetails: PlaceDetails = {
+        placeId: '',
+        name: location.placeDesc,
+        address: '',
+        latitude: lat,
+        longitude: lng,
+      };
+      dispatch(selectPlace(placeDetails));
+
+      // Save to history
+      if (clientId) {
+        dispatch(
+          saveVisitedLocation({
+            clientId,
+            placeDesc: location.placeDesc,
+            latitude: location.latitude,
+            longitude: location.longitude,
+          })
+        );
+      }
+    },
+    [clientId, dispatch]
+  );
 
   // Update markers when favorites change
   const updateMarkers = useCallback(() => {
@@ -67,9 +117,7 @@ const MapContent = ({ onPlaceSelect }: MapContentProps) => {
       });
 
       marker.addListener('click', () => {
-        setCenter({ lat, lng });
-        mapRef.current?.setCenter({ lat, lng });
-        mapRef.current?.setZoom(15);
+        handleMarkerClick(location);
       });
 
       markersRef.current.push(marker);
@@ -92,7 +140,7 @@ const MapContent = ({ onPlaceSelect }: MapContentProps) => {
         left: 50,
       });
     }
-  }, [favorites, mapReady, markerLib]);
+  }, [favorites, mapReady, markerLib, handleMarkerClick]);
 
   // Get user's current location on mount
   useEffect(() => {
@@ -111,8 +159,109 @@ const MapContent = ({ onPlaceSelect }: MapContentProps) => {
     }
   }, []);
 
+  // Handle POI (Point of Interest) clicks on the map
+  useEffect(() => {
+    if (!mapRef.current || !mapReady || !placesLib) return;
+
+    const map = mapRef.current;
+
+    const clickListener = map.addListener('click', async (event: google.maps.MapMouseEvent & { placeId?: string }) => {
+      // Check if a POI was clicked (has placeId)
+      if (!event.placeId) return;
+
+      // Prevent the default info window from showing
+      event.stop?.();
+
+      try {
+        // Fetch place details using the Places API
+        const service = new placesLib.PlacesService(map);
+
+        service.getDetails(
+          {
+            placeId: event.placeId,
+            fields: ['name', 'formatted_address', 'geometry', 'place_id'],
+          },
+          (place, status) => {
+            if (status === google.maps.places.PlacesServiceStatus.OK && place) {
+              const lat = place.geometry?.location?.lat() ?? 0;
+              const lng = place.geometry?.location?.lng() ?? 0;
+
+              const placeDetails: PlaceDetails = {
+                placeId: place.place_id ?? '',
+                name: place.name ?? 'Unknown Place',
+                address: place.formatted_address ?? '',
+                latitude: lat,
+                longitude: lng,
+              };
+
+              dispatch(selectPlace(placeDetails));
+
+              // Save to visited history
+              if (clientId) {
+                dispatch(
+                  saveVisitedLocation({
+                    clientId,
+                    placeDesc: placeDetails.name,
+                    latitude: lat.toString(),
+                    longitude: lng.toString(),
+                  })
+                );
+              }
+            }
+          }
+        );
+      } catch (error) {
+        console.error('Error fetching place details:', error);
+      }
+    });
+
+    return () => {
+      google.maps.event.removeListener(clickListener);
+    };
+  }, [mapReady, placesLib, dispatch, clientId]);
+
+  // Check if selected place is already a favorite
+  const isFavorite = selectedPlace
+    ? favorites.some(
+        (fav) =>
+          fav.placeDesc === selectedPlace.name &&
+          parseFloat(fav.latitude) === selectedPlace.latitude &&
+          parseFloat(fav.longitude) === selectedPlace.longitude
+      )
+    : false;
+
+  const handleToggleFavorite = () => {
+    if (!selectedPlace || !clientId) return;
+
+    if (isFavorite) {
+      const favoriteItem = favorites.find(
+        (fav) =>
+          fav.placeDesc === selectedPlace.name &&
+          parseFloat(fav.latitude) === selectedPlace.latitude &&
+          parseFloat(fav.longitude) === selectedPlace.longitude
+      );
+      if (favoriteItem) {
+        dispatch(removeFavoriteLocal(favoriteItem.id));
+      }
+    } else {
+      dispatch(
+        addFavorite({
+          clientId,
+          placeDesc: selectedPlace.name,
+          latitude: selectedPlace.latitude.toString(),
+          longitude: selectedPlace.longitude.toString(),
+        })
+      );
+    }
+  };
+
+  const handleCloseDetailCard = () => {
+    dispatch(clearSelectedPlace());
+  };
+
   // Update markers when map is ready or favorites change
   useEffect(() => {
+    console.log("useEffect for isLoaded, mapReady, markerLib, updateMarkers is running")
     if (isLoaded && mapReady && markerLib) {
       updateMarkers();
     }
@@ -152,7 +301,7 @@ const MapContent = ({ onPlaceSelect }: MapContentProps) => {
         <Map
           defaultZoom={DEFAULT_ZOOM}
           defaultCenter={center}
-          center={center}
+          clickableIcons={true}
           mapId="DEMO_MAP_ID"
           onCameraChanged={(ev) => {
             if (!mapRef.current) {
@@ -163,6 +312,17 @@ const MapContent = ({ onPlaceSelect }: MapContentProps) => {
           }}
         />
       </Box>
+
+      {/* Location detail card */}
+      {selectedPlace && (
+        <LocationDetailCard
+          place={selectedPlace}
+          isFavorite={isFavorite}
+          isLoading={favoritesLoading}
+          onClose={handleCloseDetailCard}
+          onToggleFavorite={handleToggleFavorite}
+        />
+      )}
 
       {/* Search bar overlay */}
       <Box

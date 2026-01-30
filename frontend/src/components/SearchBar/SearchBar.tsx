@@ -13,7 +13,7 @@ import { usePlacesAutocomplete } from '../../hooks';
 import { useAppDispatch, useAppSelector } from '../../store/hooks';
 import { selectPlace, saveVisitedLocation } from '../../store/slices/searchSlice';
 import type { PlaceDetails } from '../../types';
-import type { autocompletesuggestRequest } from '../../hooks/usePlacesAutocomplete';
+import type { autocompletesuggestRequest, GPlaceSuggestion } from '../../hooks/usePlacesAutocomplete';
 
 interface SearchBarProps {
   placeholder?: string;
@@ -48,7 +48,7 @@ export const SearchBar = ({
 
   const handleSelect = async (
     _event: React.SyntheticEvent,
-    value: string | google.maps.places.AutocompletePrediction | null
+    value: string | GPlaceSuggestion | google.maps.places.AutocompletePrediction | null
   ) => {
     if (!value || typeof value === 'string') return;
 
@@ -94,7 +94,7 @@ export const SearchBar = ({
         getOptionLabel={(option) =>
           typeof option === 'string'
             ? option
-            : "TODO"
+            : option.description
         }
         filterOptions={(x) => x}
         loading={isLoading}
@@ -145,7 +145,7 @@ export const SearchBar = ({
               <LocationIcon sx={{ color: 'text.secondary', mt: 0.5 }} />
               <Box>
                 <Typography variant="body1">
-                  {option}
+                  {option.description}
                 </Typography>
               </Box>
             </Box>

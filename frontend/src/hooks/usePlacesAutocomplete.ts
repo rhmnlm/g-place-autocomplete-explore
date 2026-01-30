@@ -1,18 +1,41 @@
 import { useState, useCallback, useRef, useEffect } from 'react';
 import type { PlaceDetails } from '../types';
 
+interface LocationBias {
+  lat: number;
+  lng: number;
+}
+
+interface Bounds {
+  north: number;
+  south: number;
+  east: number;
+  west: number;
+}
+
 interface UsePlacesAutocompleteOptions {
   debounceMs?: number;
   types?: string[];
+  // Location bias - results will be biased towards this location within the radius
+  location?: LocationBias;
+  radius?: number; // in meters
+  // Bounds - results will be biased within these bounds
+  bounds?: Bounds;
+  // Restrict to specific country (ISO 3166-1 Alpha-2 country code)
+  componentRestrictions?: { country: string | string[] };
 }
 
-type queryAutocompletePrediction = google.maps.places.QueryAutocompletePrediction[] | null;
 export type autocompletesuggestRequest = Pick<google.maps.places.AutocompleteRequest, 'input'>
+
+export interface GPlaceSuggestion {
+  description: string;
+  place_id: string
+}
 
 interface UsePlacesAutocompleteResult {
   value: string;
   setValue: (value: autocompletesuggestRequest) => void;
-  suggestions: string[];
+  suggestions: GPlaceSuggestion[];
   isLoading: boolean;
   clearSuggestions: () => void;
   getPlaceDetails: (placeId: string) => Promise<PlaceDetails>;
@@ -22,11 +45,10 @@ export const usePlacesAutocomplete = (
   options: UsePlacesAutocompleteOptions = {}
 ): UsePlacesAutocompleteResult => {
   const [value, setValueState] = useState('');
-  const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [suggestions, setSuggestions] = useState<GPlaceSuggestion[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   const autocompleteService = useRef<google.maps.places.AutocompleteService | null>(null);
-  const autocompletesuggestion = useRef<google.maps.places.AutocompleteSuggestion | null>(null);
   const placesServiceDiv = useRef<HTMLDivElement | null>(null);
   const placesService = useRef<google.maps.places.PlacesService | null>(null);
   const debounceTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -35,10 +57,6 @@ export const usePlacesAutocomplete = (
     const initService = () => {
       if (window.google?.maps?.places && !autocompleteService.current) {
         autocompleteService.current = new window.google.maps.places.AutocompleteService();
-      }
-
-      if (window.google?.maps?.places && !autocompletesuggestion.current) {
-        autocompletesuggestion.current = new window.google.maps.places.AutocompleteSuggestion();
       }
     };
 
@@ -58,9 +76,7 @@ export const usePlacesAutocomplete = (
 
   const fetchSuggestions = useCallback(
     async (request: autocompletesuggestRequest) => {
-      console.log("here it's calling google api", request.input)
       if (!google.maps?.places?.AutocompleteService || request.input.length < 2) {
-        console.log("burned here - API not loaded or input too short");
         setSuggestions([]);
         setIsLoading(false);
         return;
@@ -68,45 +84,55 @@ export const usePlacesAutocomplete = (
 
       setIsLoading(true);
       try {
-        console.log("fetching suggestions...")
-        // const suggestionResponse = await google.maps.places.AutocompleteSuggestion.fetchAutocompleteSuggestions(
-        //   request
-        // );
+        const queryRequest: google.maps.places.QueryAutocompletionRequest = {
+          input: request.input,
+        };
 
-        // console.log("suggestions", suggestionResponse);
-        // const { suggestions } = suggestionResponse;
+        // Add location bias if provided
+        if (options.location) {
+          queryRequest.location = new google.maps.LatLng(
+            options.location.lat,
+            options.location.lng
+          );
+          queryRequest.radius = options.radius ?? 50000; // default 50km
+        }
 
-        // const places = suggestions.map((suggestion) => ''
-        //   // suggestionResponse.suggestions?.text?.text ?? ''
-        // ).filter(Boolean);
+        // Add bounds if provided
+        if (options.bounds) {
+          queryRequest.bounds = new google.maps.LatLngBounds(
+            { lat: options.bounds.south, lng: options.bounds.west },
+            { lat: options.bounds.north, lng: options.bounds.east }
+          );
+        }
 
-        autocompleteService.current?.getQueryPredictions({input: request.input}, 
+        autocompleteService.current?.getQueryPredictions(
+          queryRequest,
           (
             predictions: google.maps.places.QueryAutocompletePrediction[] | null,
             status: google.maps.places.PlacesServiceStatus
           ) => {
-            if (status != google.maps.places.PlacesServiceStatus.OK || !predictions) {
-              alert(status);
+            setIsLoading(false);
+            console.log(predictions);
+            if (status !== google.maps.places.PlacesServiceStatus.OK || !predictions) {
+              setSuggestions([]);
               return;
             }
-            console.log(predictions);
-            const suggestions = predictions.map((prediction) => 
-              prediction.description
-            );
-            console.log("predictions", suggestions);
+            const suggestions = predictions.map((prediction) => {
+              return {
+                description: prediction.description,
+                place_id: prediction.place_id ?? ''
+              }
+            });
             setSuggestions(suggestions);
           }
-        )
-
-        // setSuggestions([]);
+        );
       } catch (error) {
         console.error("Failed to fetch suggestions:", error);
         setSuggestions([]);
-      } finally {
         setIsLoading(false);
       }
     },
-    [options.types]
+    [options.types, options.location, options.radius, options.bounds]
   );
 
   const setValue = useCallback(

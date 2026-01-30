@@ -12,6 +12,7 @@ import {
   MenuItem,
   Button,
   Chip,
+  Tooltip,
 } from '@mui/material';
 import {
   Star as StarIcon,
@@ -96,22 +97,24 @@ const LocationItem = ({
       }}
       onClick={onClick}
     >
-      <IconButton
-        size="small"
-        onClick={(e: React.MouseEvent) => {
-          e.stopPropagation();
-          onToggleFavorite();
-        }}
-        sx={{
-          color: isFavorite ? '#FFD700' : 'text.secondary',
-          p: 0.5,
-          '&:hover': {
-            backgroundColor: isFavorite ? 'rgba(255, 215, 0, 0.1)' : 'rgba(0, 0, 0, 0.04)',
-          },
-        }}
-      >
-        {isFavorite ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
-      </IconButton>
+      <Tooltip title={isFavorite ? "Remove" : "Add to favorites"}>
+        <IconButton
+          size="small"
+          onClick={(e: React.MouseEvent) => {
+            e.stopPropagation();
+            onToggleFavorite();
+          }}
+          sx={{
+            color: isFavorite ? '#FFD700' : 'text.secondary',
+            p: 0.5,
+            '&:hover': {
+              backgroundColor: isFavorite ? 'rgba(255, 215, 0, 0.1)' : 'rgba(0, 0, 0, 0.04)',
+            },
+          }}
+        >
+          {isFavorite ? <StarIcon fontSize="small" /> : <StarBorderIcon fontSize="small" />}
+        </IconButton>
+      </Tooltip>
       <LocationIcon sx={{ color: 'text.secondary', fontSize: 20 }} />
       <Box sx={{ flex: 1, overflow: 'hidden' }}>
         <Typography

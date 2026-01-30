@@ -1,0 +1,539 @@
+{
+  "info": {
+    "_postman_id": "9236c917-c7c9-4e3a-9a8a-45563dc05157",
+    "name": "GPlace Autocomplete API",
+    "description": "API collection for Google Places Autocomplete exploration",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "29421099"
+  },
+  "item": [
+    {
+      "name": "Client",
+      "item": [
+        {
+          "name": "Identify Client (No Client ID)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/client/identify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "identify"
+              ]
+            },
+            "description": "Creates a new client and returns clientId"
+          },
+          "response": []
+        },
+        {
+          "name": "Identify Client (With Client ID)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              },
+              {
+                "key": "X-Client-Id",
+                "value": "{{clientId}}",
+                "description": "Optional: Client ID from previous identify call"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{clientId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/client/identify",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "client",
+                "identify"
+              ]
+            },
+            "description": "Validates existing clientId or creates new one"
+          },
+          "response": []
+        }
+      ],
+      "description": "Since we don't have any authentication method in place, we'll use client ID as some sort of session id to identify the client."
+    },
+    {
+      "name": "Categories",
+      "item": [
+        {
+          "name": "Create Category",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"categoryName\": \"Food\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categories",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories"
+              ]
+            },
+            "description": "Creates a new category for a client"
+          },
+          "response": []
+        },
+        {
+          "name": "Update Category",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"categoryName\": \"Food & Beverages\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}?clientId={{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                "{{categoryId}}"
+              ],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "{{clientId}}"
+                }
+              ]
+            },
+            "description": "Updates a category name (demonstrates UPDATE with @Transactional)"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Categories (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories?clientId={{clientId}}&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories"
+              ],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Gets paginated list of categories for a client"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Category by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/categories/{{categoryId}}?clientId={{clientId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "categories",
+                "{{categoryId}}"
+              ],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "{{clientId}}"
+                }
+              ]
+            },
+            "description": "Gets a single category by ID"
+          },
+          "response": []
+        }
+      ],
+      "description": "Categories is for client to sort any faved location into their selected categories. Think categories such as a collection.  \nExample, client can have \"Food\" category where client saves all related food places in there."
+    },
+    {
+      "name": "Locations",
+      "item": [
+        {
+          "name": "Save Visited Location",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"placeDesc\": \"Tokyo, Japan\",\n  \"latitude\": \"35.6762\",\n  \"longitude\": \"139.6503\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/locations/visited",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "visited"
+              ]
+            },
+            "description": "Saves a visited location for a client"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Visited Locations (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/locations/visited?clientId={{clientId}}&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "visited"
+              ],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Gets paginated list of visited locations (10 per page)"
+          },
+          "response": []
+        },
+        {
+          "name": "Save Faved Location (without category)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"placeDesc\": \"Paris, France\",\n  \"latitude\": \"48.8566\",\n  \"longitude\": \"2.3522\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/locations/faved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "faved"
+              ]
+            },
+            "description": "Saves a favorited location without a category"
+          },
+          "response": []
+        },
+        {
+          "name": "Save Faved Location (with category)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"placeDesc\": \"Jiro Sushi, Tokyo\",\n  \"latitude\": \"35.6712\",\n  \"longitude\": \"139.7633\",\n  \"categoryId\": \"{{categoryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/locations/faved",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "faved"
+              ]
+            },
+            "description": "Saves a favorited location with a category assignment"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Faved Locations (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/locations/faved?clientId={{clientId}}&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "faved"
+              ],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Gets paginated list of favorited locations"
+          },
+          "response": []
+        },
+        {
+          "name": "Assign Category to Faved Location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"categoryId\": \"{{categoryId}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/locations/faved/{{favedLocationId}}/category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "faved",
+                "{{favedLocationId}}",
+                "category"
+              ]
+            },
+            "description": "Assigns or reassigns a category to an existing faved location"
+          },
+          "response": []
+        },
+        {
+          "name": "Remove Category from Faved Location",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"clientId\": \"{{clientId}}\",\n  \"categoryId\": null\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/locations/faved/{{favedLocationId}}/category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "faved",
+                "{{favedLocationId}}",
+                "category"
+              ]
+            },
+            "description": "Removes category assignment from a faved location"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Faved Locations by Category (Paginated)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/locations/faved/category/{{categoryId}}?clientId={{clientId}}&page=0&size=10",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "faved",
+                "category",
+                "{{categoryId}}"
+              ],
+              "query": [
+                {
+                  "key": "clientId",
+                  "value": "{{clientId}}"
+                },
+                {
+                  "key": "page",
+                  "value": "0"
+                },
+                {
+                  "key": "size",
+                  "value": "10"
+                }
+              ]
+            },
+            "description": "Gets paginated list of faved locations within a specific category"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Location Weather (3rd Party API)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/locations/weather?latitude=35.6762&longitude=139.6503",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "api",
+                "locations",
+                "weather"
+              ],
+              "query": [
+                {
+                  "key": "latitude",
+                  "value": "35.6762"
+                },
+                {
+                  "key": "longitude",
+                  "value": "139.6503"
+                }
+              ]
+            },
+            "description": "Gets weather data for coordinates (calls Open-Meteo 3rd party API)"
+          },
+          "response": []
+        }
+      ],
+      "description": "Used to identify a location.  \nIn general, Location consists of 3 required fields:\n\nplace_desc -> place description\n\nlatitude\n\nlongitude"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "packages": {},
+        "requests": {},
+        "exec": [
+          ""
+        ]
+      }
+    }
+  ],
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080"
+    },
+    {
+      "key": "clientId",
+      "value": ""
+    },
+    {
+      "key": "categoryId",
+      "value": ""
+    },
+    {
+      "key": "favedLocationId",
+      "value": ""
+    }
+  ]
+}

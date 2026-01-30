@@ -14,6 +14,12 @@ db/mssql-data/**
 
 # log file
 **/log/**.log
+**/logs
+frontend/npm-debug.log*
+frontend/yarn-debug.log*
+frontend/yarn-error.log*
+frontend/pnpm-debug.log*
+frontend/lerna-debug.log*
 
 ### VS Code ###
 .vscode/

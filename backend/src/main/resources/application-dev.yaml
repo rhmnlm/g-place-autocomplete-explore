@@ -12,6 +12,9 @@ weather:
   api:
     base-url: https://api.open-meteo.com/v1
 
+cors:
+  allowed-origin: http://localhost:5173
+
 logging:
   level:
     root: INFO

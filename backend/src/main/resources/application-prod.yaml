@@ -12,6 +12,9 @@ weather:
   api:
     base-url: https://api.open-meteo.com/v1
 
+cors:
+  allowed-origin: ${ALLOWED_ORIGIN}
+
 logging:
   level:
     root: WARN

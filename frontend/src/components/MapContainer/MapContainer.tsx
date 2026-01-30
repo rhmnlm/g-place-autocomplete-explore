@@ -41,12 +41,20 @@ const MapContent = ({ onPlaceSelect }: MapContentProps) => {
 
   const mapRef = useRef<google.maps.Map | null>(null);
   const markersRef = useRef<google.maps.marker.AdvancedMarkerElement[]>([]);
+  const selectedMarkerRef = useRef<google.maps.marker.AdvancedMarkerElement | null>(null);
   const [center, setCenter] = useState<Position>(DEFAULT_CENTER);
   const [mapReady, setMapReady] = useState(false);
 
-  // Update center when a place is selected from autocomplete
+  // Update center and marker when a place is selected
   useEffect(() => {
     console.log("useEffect selectedPlace running");
+
+    // Remove existing selected marker
+    if (selectedMarkerRef.current) {
+      selectedMarkerRef.current.map = null;
+      selectedMarkerRef.current = null;
+    }
+
     if (selectedPlace && mapRef.current) {
       const newCenter = {
         lat: selectedPlace.latitude,
@@ -55,8 +63,27 @@ const MapContent = ({ onPlaceSelect }: MapContentProps) => {
       setCenter(newCenter);
       mapRef.current.setCenter(newCenter);
       mapRef.current.setZoom(15);
+
+      // Create styled marker for selected place
+      if (markerLib && mapReady) {
+        // Create a custom pin element with blue color
+        const pinElement = new markerLib.PinElement({
+          background: '#4285F4', // Google blue
+          borderColor: '#1a73e8',
+          glyphColor: '#ffffff',
+          scale: 1.2, // Slightly larger than default
+        });
+
+        selectedMarkerRef.current = new markerLib.AdvancedMarkerElement({
+          map: mapRef.current,
+          position: newCenter,
+          title: selectedPlace.name,
+          content: pinElement.element,
+          zIndex: 1000, // Ensure it's above other markers
+        });
+      }
     }
-  }, [selectedPlace]);
+  }, [selectedPlace, markerLib, mapReady]);
 
   // Handler for marker click - shows details and saves to history
   const handleMarkerClick = useCallback(

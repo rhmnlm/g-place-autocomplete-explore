@@ -88,3 +88,19 @@ export interface PlaceDetails {
   latitude: number;
   longitude: number;
 }
+
+// Weather types
+export interface WeatherData {
+  description: string;
+  temperature: number;
+  feelsLike: number;
+  windSpeed: number;
+  humidity: number;
+  condition: string;
+}
+
+export interface WeatherResponse {
+  latitude: string;
+  longitude: string;
+  weather: WeatherData | null;
+}

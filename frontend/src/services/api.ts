@@ -7,6 +7,7 @@ import type {
   CategoryRequest,
   CategoryUpdateRequest,
   CategoryResponse,
+  WeatherResponse,
 } from '../types';
 
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8080/api';
@@ -86,4 +87,9 @@ export const categoriesApi = {
 
   getById: (id: string, clientId: string): Promise<CategoryResponse> =>
     get(`/categories/${id}?clientId=${clientId}`),
+};
+
+export const weatherApi = {
+  getByCoordinates: (latitude: number, longitude: number): Promise<WeatherResponse> =>
+    get(`/locations/weather?latitude=${latitude}&longitude=${longitude}`),
 };

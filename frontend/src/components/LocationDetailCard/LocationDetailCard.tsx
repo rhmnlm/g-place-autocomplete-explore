@@ -1,17 +1,24 @@
+import { useEffect, useState } from 'react';
 import {
   Box,
   Paper,
   Typography,
   IconButton,
   Button,
+  Divider,
+  CircularProgress,
 } from '@mui/material';
 import {
   Close as CloseIcon,
   Star as StarIcon,
   StarBorder as StarBorderIcon,
   LocationOn as LocationIcon,
+  Thermostat as ThermostatIcon,
+  Air as WindIcon,
+  WaterDrop as HumidityIcon,
 } from '@mui/icons-material';
-import type { PlaceDetails } from '../../types';
+import type { PlaceDetails, WeatherData } from '../../types';
+import { weatherApi } from '../../services/api';
 
 interface LocationDetailCardProps {
   place: PlaceDetails;
@@ -28,6 +35,26 @@ export const LocationDetailCard = ({
   onClose,
   onToggleFavorite,
 }: LocationDetailCardProps) => {
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [weatherLoading, setWeatherLoading] = useState(false);
+
+  useEffect(() => {
+    const fetchWeather = async () => {
+      setWeatherLoading(true);
+      try {
+        const response = await weatherApi.getByCoordinates(place.latitude, place.longitude);
+        setWeather(response.weather);
+      } catch (error) {
+        console.error('Failed to fetch weather:', error);
+        setWeather(null);
+      } finally {
+        setWeatherLoading(false);
+      }
+    };
+
+    fetchWeather();
+  }, [place.latitude, place.longitude]);
+
   return (
     <Paper
       elevation={3}
@@ -84,9 +111,52 @@ export const LocationDetailCard = ({
           </Box>
         </Box>
 
-        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 2 }}>
+        <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mb: 1.5 }}>
           {place.latitude.toFixed(6)}, {place.longitude.toFixed(6)}
         </Typography>
+
+        {/* Weather Section */}
+        <Divider sx={{ my: 1.5 }} />
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ fontWeight: 600, mb: 1 }}>
+            Weather
+          </Typography>
+          {weatherLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', py: 1 }}>
+              <CircularProgress size={20} />
+            </Box>
+          ) : weather ? (
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+              <Typography variant="body2" sx={{ fontWeight: 500 }}>
+                {weather.condition}
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <ThermostatIcon sx={{ fontSize: 16, color: 'error.main' }} />
+                  <Typography variant="caption">
+                    {weather.temperature?.toFixed(1)}°C
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <WindIcon sx={{ fontSize: 16, color: 'info.main' }} />
+                  <Typography variant="caption">
+                    {weather.windSpeed?.toFixed(1)} km/h
+                  </Typography>
+                </Box>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
+                  <HumidityIcon sx={{ fontSize: 16, color: 'primary.main' }} />
+                  <Typography variant="caption">
+                    {weather.humidity?.toFixed(0)}%
+                  </Typography>
+                </Box>
+              </Box>
+            </Box>
+          ) : (
+            <Typography variant="caption" color="text.secondary">
+              Weather data unavailable
+            </Typography>
+          )}
+        </Box>
 
         <Button
           variant={isFavorite ? 'outlined' : 'contained'}
